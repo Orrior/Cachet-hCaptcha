@@ -30,6 +30,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Panfu\Laravel\HCaptcha\HCaptcha;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -80,6 +81,14 @@ class SubscribeController extends Controller
         $email = Binput::get('email');
         $subscriptions = Binput::get('subscriptions');
         $verified = app(Repository::class)->get('setting.skip_subscriber_verification');
+        $captcha = new HCaptcha(config("captcha.credentials.key"), config("captcha.credentials.secret"));
+
+        if(!$captcha->validate(Binput::get('h-captcha-response'))){
+            return cachet_redirect('subscribe')
+                ->withInput(Binput::all())
+                ->withTitle(sprintf('%s %s', trans('dashboard.notifications.whoops'), trans('cachet.subscriber.email.failure')))
+                ->withErrors("Please complete the captcha.");
+        }
 
         try {
             $subscription = execute(new SubscribeSubscriberCommand($email, $verified));
